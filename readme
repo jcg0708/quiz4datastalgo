@@ -1,1 +1,137 @@
 Frontend Pair: https://github.com/BenjPatt03/quiz-4-datastalgo
+
+https://docs.google.com/document/d/1bRSBL9Pt3bIQqULnSXKvScBjuwxzqXqZ0nZPb8oAiaw/edit?usp=sharing
+
+# Project & Task Management System
+
+A robust Django REST Framework (DRF) backend integrated with a Frontend application to manage projects, tasks, and users with automated hours calculation through Django Signals and JWT authentication.
+
+## 🚀 Features
+
+### 1. Data Models
+- **Custom User Model (`CustomerUserModel`):** Extended user profiles including roles (Admin, Manager, User).
+- **Projects:** Track project names, descriptions, and cumulative hours consumed.
+- **Tasks:** Granular task management linked to projects and specific users.
+
+### 2. Intelligent Status & Signals
+- **Automated Status:** Projects and Tasks are automatically marked as `CREATED` or `IN PROGRESS` based on the `start_date` relative to the current date.
+- **Hours Consumed Logic:** 
+    - When a Task is marked `COMPLETED`, a signal calculates `hours_consumed` based on the delta between `start_date` and the **actual completion date** (24 hours per day).
+    - A secondary signal triggers to update the total `hours_consumed` of the parent **Project** whenever a task's hours are updated.
+
+### 3. Permissions & Security
+- **SimpleJWT:** Secure API access using Bearer tokens.
+- **Role-Based Access Control (RBAC):**
+    - **Admins:** Full CRUD access to all projects, tasks, and user creation.
+    - **Managers:** Can see assigned projects and create tasks.
+    - **Users:** Read-only access to projects they are specifically linked to via assigned tasks.
+
+---
+
+## 🛠 Tech Stack
+- **Backend:** Django, Django REST Framework
+- **Authentication:** SimpleJWT
+- **Frontend:** [Insert Frontend Framework, e.g., React/Vue]
+- **Database:** SQLite (Development) / PostgreSQL (Production)
+
+---
+
+## 📋 API Endpoints & Postman Guide
+
+### Authentication
+**Endpoint:** `/api/token/`  
+**Method:** `POST`  
+**Payload:** `{"username": "admin", "password": "password123"}`  
+*Note: Use the `access` token in the Authorization header as `Bearer <token>` for all subsequent requests.*
+
+### User Management
+| Endpoint | Method | Permission | Description |
+| :--- | :--- | :--- | :--- |
+| `/api/users/create/` | `POST` | Admin Only | Create a new `CustomerUserModel` |
+
+### Project Management
+| Endpoint | Method | Permission | Description |
+| :--- | :--- | :--- | :--- |
+| `/api/projects/` | `GET` | All (Filtered) | Admins see all; Managers/Users see assigned only. |
+| `/api/projects/<id>/` | `GET` | All (Filtered) | View details of an assigned project. |
+| `/api/projects/create/` | `POST` | Admin Only | Create project. Status auto-sets based on `start_date`. |
+
+### Task Management
+| Endpoint | Method | Permission | Description |
+| :--- | :--- | :--- | :--- |
+| `/api/tasks/create/` | `POST` | Admin/Manager | Create task. Linked to Project ID and User ID. |
+| `/api/tasks/<id>/update/` | `PATCH` | Admin/Manager | Update status to `COMPLETED` to trigger hours calculation. |
+
+---
+
+## 🧪 Testing with Postman
+
+1. **Login:** Hit the `/api/token/` endpoint to get your JWT.
+2. **Set Header:** In Postman, go to the **Auth** tab, select **Bearer Token**, and paste your access token.
+3. **Create Project (Admin):**
+   - Payload:
+     ```json
+     {
+       "project_name": "Digital Transformation",
+       "start_date": "2026-02-05", 
+       "end_date": "2026-03-05"
+     }
+     ```
+   - *Logic Check:* If `start_date` is today, status will be `IN PROGRESS`.
+4. **Complete Task:**
+   - Change a task status to `COMPLETED`.
+   - Observe the `hours_consumed` in the Task response and verify the Project's total `hours_consumed` has increased accordingly.
+
+---
+
+## 📈 Signal Logic Detail
+
+- **Task Signal:** 
+  `hours_consumed = (Completion_Date - start_date).days * 24`
+  *Note: We use the actual date of completion if it exceeds the intended `end_date`.*
+- **Project Signal:**
+  `project.hours_consumed = Sum(all_related_tasks.hours_consumed)`
+
+---
+
+## 📝 Commit Convention (Unified Repo)
+
+This repository follows a specific commit structure for the merged Frontend and Backend progress:
+- **Backend:** Standard atomic commits.
+- **Frontend Integration:** When merging frontend work, a single consolidated commit is used.
+- **Consolidated Message Format:**
+  ```text
+  feat(frontend): Integrated UI components
+  
+  Original Frontend Commits:
+  - Add login UI and validation
+  - Implement Project Dashboard grid
+  - Fix styling on Task modals
+  - Connect ProjectDetailView to API
+  ```
+
+---
+
+## 🔧 Installation
+
+1. Clone the repository:
+   ```bash
+   git clone <repo-url>
+   ```
+2. Setup Virtual Environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate # Windows: venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Run Migrations:
+   ```bash
+   python manage.py migrate
+   ```
+5. Start Server:
+   ```bash
+   python manage.py runserver
+   ```
