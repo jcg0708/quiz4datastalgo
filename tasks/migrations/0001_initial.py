@@ -10,21 +10,23 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ('projects', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Project',
+            name='Task',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('project_name', models.CharField(max_length=200)),
-                ('project_description', models.TextField(blank=True, null=True)),
+                ('task_name', models.CharField(max_length=200)),
+                ('task_description', models.TextField()),
                 ('status', models.CharField(choices=[('CREATED', 'Created'), ('IN PROGRESS', 'In Progress'), ('OVERDUE', 'Overdue'), ('COMPLETED', 'Completed')], default='CREATED', max_length=20)),
                 ('hours_consumed', models.DecimalField(decimal_places=2, default=0.0, max_digits=10)),
                 ('start_date', models.DateField(blank=True, null=True)),
                 ('end_date', models.DateField(blank=True, null=True)),
-                ('manager', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='managed_projects', to=settings.AUTH_USER_MODEL)),
+                ('project', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='tasks', to='projects.project')),
+                ('user_assigned', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assigned_tasks', to=settings.AUTH_USER_MODEL)),
             ],
         ),
     ]

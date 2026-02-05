@@ -1,48 +1,53 @@
-from rest_framework import viewsets, generics, permissions
-from .models import Project, Task
-from .serializers import (
-    ProjectDetailSerializer, 
-    ProjectCreateSerializer, 
-    TaskSerializer, 
-    TaskCreateSerializer
-)
-from .permissions import IsAdminOrManager
-class IsAdminOrReadOnly(permissions.BasePermission):
-    """
-    Custom permission to only allow admins to edit/create objects.
-    """
+from rest_framework import generics, permissions
+from django.utils import timezone
+from .models import Project
+from .serializers import ProjectSerializer, ProjectCreateSerializer
+from tasks.models import Task
+
+class IsAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return request.user and request.user.is_staff
+        return request.user.is_authenticated and request.user.role == 'admin'
 
-class ProjectViewSet(viewsets.ModelViewSet):
-    queryset = Project.objects.all()
-    
-    def get_serializer_class(self):
-        # Use different serializers for different actions
-        if self.action == 'create' or self.action == 'update':
-            return ProjectCreateSerializer
-        return ProjectDetailSerializer
+class ProjectListView(generics.ListAPIView):
+    serializer_class = ProjectSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
-    def get_permissions(self):
-        # "Accessible to the Admin only" for creation
-        if self.action == 'create':
-            permission_classes = [permissions.IsAdminUser]
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'admin':
+            return Project.objects.all()
+        elif user.role == 'manager':
+
+            return Project.objects.filter(manager=user)
         else:
-            permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-        return [permission() for permission in permission_classes]
-    
-class ProjectTaskCreateView(generics.CreateAPIView):
-    """
-    API View to create a task specifically for a project.
-    Route: POST /api/v1/projects/<project_id>/tasks/
-    """
-    serializer_class = TaskCreateSerializer
-    permission_classes = [IsAdminOrManager] # Only Admin or Manager can access
+            
+            
+            return Project.objects.filter(tasks__user_assigned=user).distinct()
+
+class ProjectDetailView(generics.RetrieveAPIView):
+    serializer_class = ProjectSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        
+        user = self.request.user
+        if user.role == 'admin':
+            return Project.objects.all()
+        elif user.role == 'manager':
+            return Project.objects.filter(manager=user)
+        else:
+            return Project.objects.filter(tasks__user_assigned=user).distinct()
+
+class ProjectCreateView(generics.CreateAPIView):
+    serializer_class = ProjectCreateSerializer
+    permission_classes = [IsAdmin] 
 
     def perform_create(self, serializer):
-        # Automatically link the new task to the project defined in the URL
-        project_id = self.kwargs.get('project_id')
-        project = Project.objects.get(pk=project_id)
-        serializer.save(project=project)
+        start_date = serializer.validated_data.get('start_date')
+        today = timezone.now().date()
+        
+        status = 'CREATED'
+        if start_date == today:
+            status = 'IN PROGRESS'
+        
+        serializer.save(status=status)
